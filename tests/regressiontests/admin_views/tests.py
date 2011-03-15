@@ -36,7 +36,8 @@ from models import (Article, BarAccount, CustomArticle, EmptyModel,
     Language, Collector, Widget, Grommet, DooHickey, FancyDoodad, Whatsit,
     Category, Post, Plot, FunkyTag, Chapter, Book, Promo, WorkHour, Employee,
     Question, Answer, Inquisition, Actor, FoodDelivery,
-    RowLevelChangePermissionModel, Paper, CoverLetter, Story, OtherStory)
+    RowLevelChangePermissionModel, Paper, CoverLetter, Story, OtherStory, 
+    ReadonlyFieldsetTestModel)
 
 
 class AdminViewBasicTest(TestCase):
@@ -2618,6 +2619,34 @@ class ReadonlyTest(TestCase):
         p = Post.objects.create(title="I worked on readonly_fields", content="Its good stuff")
         response = self.client.get('/test_admin/admin/admin_views/post/%d/' % p.pk)
         self.assertContains(response, "%d amount of cool" % p.pk)
+
+        response = self.client.get('/test_admin/admin/admin_views/readonlyfieldsettestmodel/add/')
+        self.assertContains(response, 'Field1:</label>')
+        self.assertContains(response, 'Field2:</label>')
+        self.assertContains(response, 'Set1')
+        self.assertContains(response, 'Field3:</label>')
+        self.assertNotContains(response, 'Field4:</label>')
+        self.assertNotContains(response, 'Set2')
+        self.assertNotContains(response, 'Field5:</label>')
+        self.assertNotContains(response, 'Field6:</label>')
+        self.assertContains(response, 'Set3')
+        self.assertContains(response, 'Field7:</label>')
+        self.assertContains(response, 'Field8:</label>')
+
+        obj = ReadonlyFieldsetTestModel.objects.create(field1='a', field2='b', field3='c',
+                                                       field4='d', field5='e', field6='f')
+        response = self.client.get('/test_admin/admin/admin_views/readonlyfieldsettestmodel/%d/' % obj.pk)
+        self.assertContains(response, 'Field1:</label>')
+        self.assertContains(response, 'Field2:</label>')
+        self.assertContains(response, 'Set1')
+        self.assertContains(response, 'Field3:</label>')
+        self.assertContains(response, 'Field4:</label>')
+        self.assertContains(response, 'Set2')
+        self.assertContains(response, 'Field5:</label>')
+        self.assertContains(response, 'Field6:</label>')
+        self.assertContains(response, 'Set3')
+        self.assertContains(response, 'Field7:</label>')
+        self.assertContains(response, 'Field8:</label>')
 
     def test_readonly_post(self):
         data = {

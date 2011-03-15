@@ -758,6 +758,33 @@ class OtherStoryAdmin(admin.ModelAdmin):
     list_display_links = ('title', 'id') # 'id' in list_display_links
     list_editable = ('content', )
 
+class ReadonlyFieldsetTestModel(models.Model):
+    field1 = models.CharField(max_length=100)
+    field2 = models.CharField(max_length=100)
+    field3 = models.CharField(max_length=100)
+    field4 = models.CharField(max_length=100)
+    field5 = models.CharField(max_length=100)
+    field6 = models.CharField(max_length=100)
+    field7 = models.CharField(max_length=100, default=lambda:'foo')
+    field8 = models.CharField(max_length=100, default='foo')
+
+class ReadonlyFieldsetTestAdmin(admin.ModelAdmin):
+    fieldsets = (
+        (None, {
+            'fields': ('field1', 'field2')
+        }),
+        ('Set1', {
+            'fields': ('field3', 'field4')
+        }),
+        ('Set2', {
+            'fields': ('field5', 'field6')
+        }),
+        ('Set3', {
+            'fields': ('field7', 'field8')
+        }),
+    )
+    readonly_fields = ('field4', 'field5', 'field6', 'field7', 'field8')
+
 admin.site.register(Article, ArticleAdmin)
 admin.site.register(CustomArticle, CustomArticleAdmin)
 admin.site.register(Section, save_as=True, inlines=[ArticleInline])
@@ -800,6 +827,7 @@ admin.site.register(Paper, PaperAdmin)
 admin.site.register(CoverLetter, CoverLetterAdmin)
 admin.site.register(Story, StoryAdmin)
 admin.site.register(OtherStory, OtherStoryAdmin)
+admin.site.register(ReadonlyFieldsetTestModel, ReadonlyFieldsetTestAdmin)
 
 # We intentionally register Promo and ChapterXtra1 but not Chapter nor ChapterXtra2.
 # That way we cover all four cases:
