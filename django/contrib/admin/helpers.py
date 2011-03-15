@@ -36,11 +36,12 @@ class AdminForm(object):
 
     def __iter__(self):
         for name, options in self.fieldsets:
-            yield Fieldset(self.form, name,
-                readonly_fields=self.readonly_fields,
-                model_admin=self.model_admin,
-                **options
-            )
+            if set(options.get('fields', ())) ^ set(self.readonly_fields):
+                yield Fieldset(self.form, name,
+                    readonly_fields=self.readonly_fields,
+                    model_admin=self.model_admin,
+                    **options
+                )
 
     def first_field(self):
         try:
@@ -82,7 +83,8 @@ class Fieldset(object):
 
     def __iter__(self):
         for field in self.fields:
-            yield Fieldline(self.form, field, self.readonly_fields, model_admin=self.model_admin)
+            if field not in self.readonly_fields or self.form.instance.pk is not None:
+                yield Fieldline(self.form, field, self.readonly_fields, model_admin=self.model_admin)
 
 class Fieldline(object):
     def __init__(self, form, field, readonly_fields=None, model_admin=None):
