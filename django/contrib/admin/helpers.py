@@ -4,6 +4,7 @@ from django.contrib.admin.util import (flatten_fieldsets, lookup_field,
     display_for_field, label_for_field, help_text_for_field)
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import models
 from django.db.models.fields.related import ManyToManyRel
 from django.forms.util import flatatt
 from django.template.defaultfilters import capfirst
@@ -36,12 +37,13 @@ class AdminForm(object):
 
     def __iter__(self):
         for name, options in self.fieldsets:
-            if set(options.get('fields', ())) ^ set(self.readonly_fields):
-                yield Fieldset(self.form, name,
-                    readonly_fields=self.readonly_fields,
-                    model_admin=self.model_admin,
-                    **options
-                )
+            fieldset = Fieldset(self.form, name,
+                readonly_fields=self.readonly_fields,
+                model_admin=self.model_admin,
+                **options
+            )
+            if not fieldset.hidden:
+                yield fieldset
 
     def first_field(self):
         try:
@@ -98,13 +100,22 @@ class Fieldline(object):
             readonly_fields = ()
         self.readonly_fields = readonly_fields
 
+    @property
+    def hidden(self):
+        # The line is visible only if there is at least one visible field in it
+        for field in self:
+            return False
+        return True
+
     def __iter__(self):
         for i, field in enumerate(self.fields):
             if field in self.readonly_fields:
-                yield AdminReadonlyField(self.form, field, is_first=(i == 0),
+                field_obj = AdminReadonlyField(self.form, field, is_first=(i == 0),
                     model_admin=self.model_admin)
             else:
-                yield AdminField(self.form, field, is_first=(i == 0))
+                field_obj = AdminField(self.form, field, is_first=(i == 0))
+            if not field_obj.hidden:
+                yield field_obj
 
     def errors(self):
         return mark_safe(u'\n'.join([self.form[f].errors.as_ul() for f in self.fields if f not in self.readonly_fields]).strip('\n'))
@@ -114,6 +125,7 @@ class AdminField(object):
         self.field = form[field] # A django.forms.BoundField instance
         self.is_first = is_first # Whether this field is first on the line
         self.is_checkbox = isinstance(self.field.field.widget, forms.CheckboxInput)
+        self.hidden = False
 
     def label_tag(self):
         classes = []
@@ -140,8 +152,19 @@ class AdminReadonlyField(object):
         # For convenience, store other field-related data here too.
         if callable(field):
             class_name = field.__name__ != '<lambda>' and field.__name__ or ''
+            self.hidden = False
         else:
             class_name = field
+            if form.instance.pk is None:
+                # Creation form, field is hidden unless it has a default or isn't a real field
+                try:
+                    f = form.instance._meta.get_field(field)
+                except models.FieldDoesNotExist:
+                    self.hidden = False
+                else:
+                    self.hidden = f.default is models.fields.NOT_PROVIDED
+            else:
+                self.hidden = False
         self.field = {
             'name': class_name,
             'label': label,
